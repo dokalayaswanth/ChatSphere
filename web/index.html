@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spider Chat | Login</title>
+  <link rel="stylesheet" href="login_page.css">
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <main class="auth-wrap">
+    <section class="auth-card">
+      <p class="brand-pill">Spider Chat</p>
+      <h1>Welcome Back</h1>
+      <p class="subtitle">Secure login to enter your real-time dashboard.</p>
+      <p id="error" class="error"></p>
+
+      <form id="login_form" class="auth-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" minlength="3" maxlength="32" required>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" minlength="6" required>
+
+        <button type="submit">Enter Chat</button>
+      </form>
+
+      <p class="switch-link">No account yet? <a href="/signup.html">Create one</a></p>
+    </section>
+  </main>
+
+  <script>
+    const loginForm = document.getElementById("login_form");
+    const errorEl = document.getElementById("error");
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      const username = e.target.username.value.trim();
+      const password = e.target.password.value;
+
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errorEl.textContent = data.error || "Login failed";
+          return;
+        }
+        localStorage.setItem("chat_token", data.token);
+        window.location.href = "/chat_page.html";
+      } catch (err) {
+        errorEl.textContent = "Network error. Please retry.";
+      }
+    });
+  </script>
+</body>
+</html>

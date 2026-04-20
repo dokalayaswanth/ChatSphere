@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spider Chat | Dashboard</title>
+  <link rel="stylesheet" href="chat_page.css">
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <main class="chat-layout">
+    <aside class="sidebar panel">
+      <div class="brand">
+        <h1>Spider Chat</h1>
+        <p class="muted">Rooms</p>
+      </div>
+      <form id="create-room-form" class="row gap-sm">
+        <input id="new-room-name" type="text" placeholder="Create room..." maxlength="64" required>
+        <button type="submit">+</button>
+      </form>
+      <div id="room-list" class="room-list"></div>
+    </aside>
+
+    <section class="chat panel">
+      <header class="topbar">
+        <div>
+          <h2 id="room-title">Select a room</h2>
+          <p id="status" class="muted">Disconnected</p>
+        </div>
+        <div class="row">
+          <span id="me" class="chip"></span>
+          <button id="logout" class="danger">Logout</button>
+        </div>
+      </header>
+
+      <section id="messages" class="messages"></section>
+
+      <form id="send-form" class="send-form">
+        <input id="message-input" type="text" placeholder="Type your message..." maxlength="1000" required>
+        <button type="submit">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem("chat_token");
+    if (!token) window.location.href = "/index.html";
+
+    const statusEl = document.getElementById("status");
+    const meEl = document.getElementById("me");
+    const roomTitleEl = document.getElementById("room-title");
+    const roomsEl = document.getElementById("room-list");
+    const messagesEl = document.getElementById("messages");
+    const msgInput = document.getElementById("message-input");
+    const sendForm = document.getElementById("send-form");
+    const createRoomForm = document.getElementById("create-room-form");
+    const newRoomName = document.getElementById("new-room-name");
+
+    let activeRoomId = null;
+    let ws = null;
+    let myUsername = "you";
+
+    function decodeUsername(jwt) {
+      try {
+        const payload = JSON.parse(atob(jwt.split(".")[1]));
+        return payload.sub || "you";
+      } catch {
+        return "you";
+      }
+    }
+    myUsername = decodeUsername(token);
+    meEl.textContent = myUsername;
+
+    function authHeaders() {
+      return { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function appendMessage(msg) {
+      const item = document.createElement("article");
+      const mine = msg.username === myUsername;
+      item.className = `message ${mine ? "mine" : ""}`;
+      item.innerHTML = `
+        <header><strong>${msg.username || "system"}</strong><span>${new Date(msg.created_at).toLocaleTimeString()}</span></header>
+        <p></p>
+      `;
+      item.querySelector("p").textContent = msg.content || "";
+      messagesEl.appendChild(item);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function connectSocket() {
+      ws = new WebSocket(`ws://${location.host}/ws?token=${encodeURIComponent(token)}`);
+      ws.onopen = () => {
+        setStatus("Connected");
+        if (activeRoomId) ws.send(JSON.stringify({ type: "join_room", room_id: activeRoomId }));
+      };
+      ws.onclose = () => {
+        setStatus("Disconnected. Retrying...");
+        setTimeout(connectSocket, 1500);
+      };
+      ws.onerror = () => setStatus("Connection error");
+      ws.onmessage = (event) => {
+        const payload = JSON.parse(event.data || "{}");
+        if (payload.type === "error") {
+          setStatus(payload.error);
+          return;
+        }
+        if (payload.type === "message" && Number(payload.room_id) === Number(activeRoomId)) {
+          appendMessage(payload);
+        }
+      };
+    }
+
+    async function loadRooms() {
+      const res = await fetch("/api/rooms", { headers: authHeaders() });
+      if (!res.ok) throw new Error("Failed to load rooms");
+      const rooms = await res.json();
+      roomsEl.innerHTML = "";
+      rooms.forEach((room) => {
+        const btn = document.createElement("button");
+        btn.className = "room-item";
+        btn.textContent = room.name;
+        btn.onclick = () => activateRoom(room.id, room.name, btn);
+        roomsEl.appendChild(btn);
+      });
+    }
+
+    async function activateRoom(roomID, roomName, button) {
+      activeRoomId = roomID;
+      roomTitleEl.textContent = `# ${roomName}`;
+      [...roomsEl.querySelectorAll(".room-item")].forEach((el) => el.classList.remove("active"));
+      button.classList.add("active");
+      messagesEl.innerHTML = "";
+
+      const res = await fetch(`/api/messages?room_id=${roomID}`, { headers: authHeaders() });
+      const history = res.ok ? await res.json() : [];
+      history.forEach((msg) => appendMessage(msg));
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "join_room", room_id: roomID }));
+      }
+    }
+
+    createRoomForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = newRoomName.value.trim();
+      if (!name) return;
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) {
+        setStatus("Could not create room");
+        return;
+      }
+      newRoomName.value = "";
+      await loadRooms();
+    });
+
+    sendForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const content = msgInput.value.trim();
+      if (!content || !activeRoomId || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "send_message", room_id: activeRoomId, content }));
+      msgInput.value = "";
+    });
+
+    document.getElementById("logout").onclick = () => {
+      localStorage.removeItem("chat_token");
+      window.location.href = "/index.html";
+    };
+
+    (async function init() {
+      try {
+        await loadRooms();
+        connectSocket();
+      } catch (err) {
+        setStatus("Failed to initialize chat");
+      }
+    })();
+  </script>
+</body>
+</html>

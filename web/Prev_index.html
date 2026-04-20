@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Go WebSocket Chat</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 24px auto; }
+    #log { border: 1px solid #ddd; height: 420px; overflow: auto; padding: 12px; border-radius: 8px; }
+    .row { display: flex; gap: 8px; margin-top: 12px; }
+    input, button { padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+    input { flex: 1; }
+    .meta { display:flex; gap:8px; margin-bottom: 12px; }
+    .meta input { flex: 0 0 180px; }
+    .sys { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Go WebSocket Chat</h1>
+
+  <div class="meta">
+    <input id="room" placeholder="room" value="lobby" />
+    <input id="user" placeholder="user" value="guest" />
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+  </div>
+
+  <div id="log"></div>
+
+  <div class="row">
+    <input id="msg" placeholder="type a message..." disabled />
+    <button id="send" disabled>Send</button>
+  </div>
+
+  <script>
+    const log = document.getElementById("log");
+    const roomEl = document.getElementById("room");
+    const userEl = document.getElementById("user");
+    const connectBtn = document.getElementById("connect");
+    const disconnectBtn = document.getElementById("disconnect");
+    const msgEl = document.getElementById("msg");
+    const sendBtn = document.getElementById("send");
+
+    let ws;
+
+    function line(text, cls) {
+      const div = document.createElement("div");
+      if (cls) div.className = cls;
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    connectBtn.onclick = () => {
+      const room = encodeURIComponent(roomEl.value || "lobby");
+      const user = encodeURIComponent(userEl.value || "anon");
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+
+      ws = new WebSocket(`${proto}://${location.host}/ws?room=${room}&user=${user}`);
+
+      ws.onopen = () => {
+        line(`connected to room=${roomEl.value} as ${userEl.value}`, "sys");
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        msgEl.disabled = false;
+        sendBtn.disabled = false;
+        msgEl.focus();
+      };
+
+      ws.onmessage = (ev) => {
+        const m = JSON.parse(ev.data);
+        const ts = new Date(m.timestamp).toLocaleTimeString();
+        if (m.type === "system") {
+          line(`[${ts}] * ${m.text}`, "sys");
+        } else {
+          line(`[${ts}] ${m.user}: ${m.text}`);
+        }
+      };
+
+      ws.onclose = () => {
+        line("disconnected", "sys");
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+        msgEl.disabled = true;
+        sendBtn.disabled = true;
+      };
+    };
+
+    disconnectBtn.onclick = () => ws && ws.close();
+
+    function send() {
+      const text = msgEl.value.trim();
+      if (!text || !ws || ws.readyState !== 1) return;
+      ws.send(JSON.stringify({ text }));
+      msgEl.value = "";
+      msgEl.focus();
+    }
+
+    sendBtn.onclick = send;
+    msgEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+    });
+  </script>
+</body>
+</html>

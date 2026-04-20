@@ -1,0 +1,83 @@
+:root {
+  --bg: #070b16;
+  --panel: rgba(8, 14, 31, 0.7);
+  --red: #b5102f;
+  --red-soft: #de2f4f;
+  --blue: #2b69ff;
+  --text: #f4f7ff;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: radial-gradient(circle at 20% 15%, rgba(43, 105, 255, 0.2), transparent 30%),
+              radial-gradient(circle at 80% 85%, rgba(181, 16, 47, 0.25), transparent 35%),
+              var(--bg);
+}
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(120deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+                    linear-gradient(60deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 26px 26px;
+  pointer-events: none;
+}
+.auth-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  border-radius: 20px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), inset 0 0 20px rgba(43, 105, 255, 0.08);
+  backdrop-filter: blur(10px);
+  animation: rise 0.45s ease;
+}
+.brand-pill {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, var(--red), var(--blue));
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+h1 { margin: 0 0 6px; }
+.subtitle { margin: 0 0 16px; color: #c8d4f9; }
+.auth-form { display: grid; gap: 10px; }
+label { font-size: 14px; }
+input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(5, 10, 20, 0.7);
+  color: var(--text);
+  padding: 11px 12px;
+  outline: none;
+}
+input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(43, 105, 255, 0.2); }
+button {
+  margin-top: 8px;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px;
+  color: #fff;
+  background: linear-gradient(120deg, var(--red-soft), var(--blue));
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(43, 105, 255, 0.25); }
+.switch-link { margin: 14px 0 0; color: #cfdbff; }
+.switch-link a { color: #7fc0ff; }
+.error { min-height: 20px; color: #ff9bb0; margin: 4px 0; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

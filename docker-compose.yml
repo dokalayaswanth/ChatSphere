@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://chatuser:chatpass@db:5432/chatapp?sslmode=disable
+      CHAT_JWT_SECRET: yaswanth1801
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: chatuser
+      POSTGRES_PASSWORD: chatpass
+      POSTGRES_DB: chatapp
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatuser -d chatapp"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

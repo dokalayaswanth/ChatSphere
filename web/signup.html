@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spider Chat | Register</title>
+  <link rel="stylesheet" href="signup_page.css">
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <main class="auth-wrap">
+    <section class="auth-card">
+      <p class="brand-pill">Spider Chat</p>
+      <h1>Create Account</h1>
+      <p class="subtitle">Join rooms, share messages, and stay connected.</p>
+      <p id="error" class="error"></p>
+
+      <form id="signup-form" class="auth-form">
+        <label for="username">Username</label>
+        <input id="username" type="text" minlength="3" maxlength="32" required>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" required>
+
+        <label for="phone">Phone</label>
+        <input id="phone" type="text" required>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" minlength="6" required>
+
+        <label for="confirm-password">Confirm Password</label>
+        <input id="confirm-password" type="password" minlength="6" required>
+
+        <button type="submit">Register</button>
+      </form>
+
+      <p class="switch-link">Already have an account? <a href="/index.html">Login</a></p>
+    </section>
+  </main>
+
+  <script>
+    const signupForm = document.getElementById("signup-form");
+    const errorEl = document.getElementById("error");
+
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+
+      const username = document.getElementById("username").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirm-password").value;
+
+      if (password !== confirmPassword) {
+        errorEl.textContent = "Passwords do not match";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, phone, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errorEl.textContent = data.error || "Registration failed";
+          return;
+        }
+        window.location.href = "/index.html";
+      } catch (err) {
+        errorEl.textContent = "Network error. Please retry.";
+      }
+    });
+  </script>
+</body>
+</html>
